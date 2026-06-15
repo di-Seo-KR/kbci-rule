@@ -257,9 +257,9 @@ def step_slide(prs, st, section, tmp):
     n, title = st['n'], (st['title'] or '')
     items = classify_desc(st['desc'])
     _header(s, n, title, section)
-    # 좌측 이미지 영역(틀 고정) — 이미지 없으면 자리표시자
-    IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
     if st['img']:
+        # 이미지 있는 단계: 좌측 확대 이미지 + 우측 '사용 방법' 틀(비어도 유지)
+        IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
         ip = os.path.join(tmp, f"s{n}.png")
         open(ip, 'wb').write(st['img'])
         iw, ih = Image.open(ip).size
@@ -272,19 +272,17 @@ def step_slide(prs, st, section, tmp):
             rect(s, dx + bx * dw, dy + by * dh, bw * dw, bh * dh, fill=None, line=HILITE_RED, line_w=2.25)
         for mn, fx, fy in st['markers']:
             marker(s, dx + fx * dw, dy + fy * dh, 0.23, mn)
+        rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
+        RX, RW = 8.85, 4.3
+        add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
+        rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
+        if items:
+            desc_box(s, RX, 2.05, RW, 4.7, items)
     else:
-        rect(s, IMGX, IMGY, IMGW, IMGH, fill=GREY_LT, line=GREY_BORDER, line_w=1)
-        add_text(s, IMGX, IMGY + IMGH / 2 - 0.35, IMGW, 0.7,
-                 [[("[ 화면 캡처 영역 ]", dict(size=14, bold=True, color=GREY))],
-                  [("캡처 추가 예정", dict(size=10, color=GREY))]],
-                 anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
-    # 우측 '사용 방법' 패널(항상 유지 — 내용은 직접 작성)
-    rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
-    RX, RW = 8.85, 4.3
-    add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
-    rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
-    if items:
-        desc_box(s, RX, 2.05, RW, 4.7, items)
+        # 텍스트만 있는 단계: 본문 중앙 배치
+        rect(s, 1.2, 2.7, 10.93, 2.1, fill=GREY_LT, line=GREY_BORDER, line_w=1)
+        body = [[(t, dict(size=14, color=GREY_DK))] for t, _ in items] or [[(st['desc'], dict(size=14, color=GREY_DK))]]
+        add_text(s, 1.6, 2.9, 10.13, 1.7, body, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
     footer(s)
     return s
 
