@@ -204,37 +204,41 @@ def step_slide(prs, n, page, captures_dir, tmp):
     roman, ptitle = STEP_PART[n]
     s = blank(prs)
     rect(s, 0, 0, SLIDE_W_IN, SLIDE_H_IN, fill=WHITE)
-    # 헤더
+    # 헤더: [번호] 단계 제목(좌, 강조) ........... 섹션(우, 보조)
     rect(s, 0, 0, SLIDE_W_IN, 1.0, fill=KB_YELLOW)
     rect(s, 0, 1.0, SLIDE_W_IN, 0.05, fill=KB_YELLOW_DK)
-    number_chip(s, 0.55, 0.27, 0.46, n, fill=WHITE, txt=KB_YELLOW_DK, size=13)
-    add_text(s, 1.2, 0.12, 10.5, 0.4, [[(f"{roman}. {ptitle}", dict(size=11, bold=True, color=WHITE))]])
-    add_text(s, 1.2, 0.44, 10.5, 0.5, [[(f"{title}", dict(size=20, bold=True, color=WHITE))]])
+    number_chip(s, 0.5, 0.27, 0.46, n, fill=WHITE, txt=KB_YELLOW_DK, size=13)
+    add_text(s, 1.12, 0.1, 8.3, 0.8, [[(title, dict(size=22, bold=True, color=WHITE))]],
+             anchor=MSO_ANCHOR.MIDDLE)
+    add_text(s, 9.5, 0.1, 3.45, 0.8, [[(f"{roman}. {ptitle}", dict(size=13, bold=True, color=WHITE))]],
+             anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
 
-    # 좌측 캡처
-    LX, LY, LW, LH = 0.45, 1.35, 7.35, 5.55
-    rect(s, LX, LY, LW, LH, fill=GREY_LT, line=GREY_BORDER, line_w=1)
+    # 좌측 캡처(확대): 거의 좌측 전체 폭
+    IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
     src = os.path.join(captures_dir, f"step{n:02d}.png") if captures_dir else None
     out_img = os.path.join(tmp, f"step{n:02d}.png")
     callouts = [{"n": mn, "x": fx, "y": fy} for mn, fx, fy in MARKERS.get(n, [])]
     iw, ih = build_image(src, callouts, out_img)
-    pad = 0.12
-    bw, bh = LW - 2 * pad, LH - 2 * pad
-    scale = min(bw / (iw / 96.0), bh / (ih / 96.0))
+    scale = min(IMGW / (iw / 96.0), IMGH / (ih / 96.0))
     dw, dh = (iw / 96.0) * scale, (ih / 96.0) * scale
-    dx, dy = LX + (LW - dw) / 2, LY + (LH - dh) / 2
+    dx, dy = IMGX + (IMGW - dw) / 2, IMGY + (IMGH - dh) / 2
+    has = bool(src and os.path.exists(src))
+    if not has:
+        rect(s, dx, dy, dw, dh, fill=GREY_LT, line=GREY_BORDER, line_w=1)
     s.shapes.add_picture(out_img, Inches(dx), Inches(dy), Inches(dw), Inches(dh))
-    if not (src and os.path.exists(src)):
-        add_text(s, LX, LY + LH / 2 - 0.35, LW, 0.7,
+    rect(s, dx, dy, dw, dh, fill=None, line=GREY_BORDER, line_w=1)  # 얇은 테두리
+    if not has:
+        add_text(s, dx, dy + dh / 2 - 0.35, dw, 0.7,
                  [[("[ 화면 캡처 영역 ]", dict(size=14, bold=True, color=GREY))],
                   [(f"step{n:02d} 캡처가 들어갈 자리", dict(size=10, color=GREY))]],
                  anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
 
-    # 우측 설명
-    RX, RW = 8.05, 4.85
-    add_text(s, RX, 1.45, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
-    rect(s, RX, 1.82, 0.55, 0.045, fill=KB_YELLOW)
-    desc_box(s, RX, 2.0, RW, 4.7, items)
+    # 구분선 + 우측 설명(오른쪽으로 이동)
+    rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
+    RX, RW = 8.85, 4.3
+    add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
+    rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
+    desc_box(s, RX, 2.05, RW, 4.7, items)
     footer(s, page)
     return s
 
