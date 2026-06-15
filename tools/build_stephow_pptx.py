@@ -10,11 +10,14 @@
 import argparse
 import os
 import tempfile
+import uuid
 
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.dml.color import RGBColor
+from pptx.oxml.ns import qn
 
 # 검증된 테마/헬퍼 재사용
 from build_manual_pptx import (
@@ -23,6 +26,8 @@ from build_manual_pptx import (
     style_run, add_text, rect, number_chip, build_image,
 )
 from stephow_markers import MARKERS
+
+MARK_RED = RGBColor(0xD9, 0x37, 0x26)  # 번호 마커 색(고대비)
 
 # ------------------------------------------------------------ 문서 메타/콘텐츠
 DOC = {
@@ -136,11 +141,47 @@ def blank(prs):
     return prs.slides.add_slide(prs.slide_layouts[6])
 
 
-def footer(slide, page):
-    add_text(slide, 0.45, SLIDE_H_IN - 0.42, 9, 0.3,
-             [[(f"{DOC['title']} {DOC['version']}", dict(size=8, color=GREY))]], anchor=MSO_ANCHOR.MIDDLE)
-    add_text(slide, SLIDE_W_IN - 1.2, SLIDE_H_IN - 0.42, 0.75, 0.3,
-             [[(str(page), dict(size=8, color=GREY))]], anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
+def _slide_number_field(paragraph, size, color):
+    """문단에 자동 슬라이드 번호(slidenum) 필드 추가 — 슬라이드 추가/삭제 시 자동 갱신."""
+    p = paragraph._p
+    fld = p.makeelement(qn('a:fld'), {'id': '{' + str(uuid.uuid4()).upper() + '}', 'type': 'slidenum'})
+    rPr = p.makeelement(qn('a:rPr'), {'lang': 'ko-KR', 'sz': str(int(size * 100)), 'b': '1'})
+    sf = p.makeelement(qn('a:solidFill'), {})
+    sf.append(p.makeelement(qn('a:srgbClr'), {'val': str(color)}))
+    rPr.append(sf)
+    for tag in ('a:latin', 'a:ea', 'a:cs'):
+        rPr.append(p.makeelement(qn(tag), {'typeface': KR_FONT}))
+    t = p.makeelement(qn('a:t'), {}); t.text = '0'
+    fld.append(rPr); fld.append(t)
+    p.append(fld)
+
+
+def footer(slide):
+    fy = SLIDE_H_IN - 0.52
+    # 좌측: KB신용정보 로고(표지와 동일 마크)
+    rect(slide, 0.45, fy + 0.05, 0.22, 0.22, fill=KB_YELLOW)
+    add_text(slide, 0.74, fy, 6, 0.32,
+             [[("KB신용정보 사규관리시스템", dict(size=12, bold=True, color=GREY_DK))]],
+             anchor=MSO_ANCHOR.MIDDLE)
+    # 우측: 자동 페이지 번호(12pt)
+    tb = slide.shapes.add_textbox(Inches(SLIDE_W_IN - 1.35), Inches(fy), Inches(0.9), Inches(0.32))
+    tb.text_frame.word_wrap = False
+    pp = tb.text_frame.paragraphs[0]; pp.alignment = PP_ALIGN.RIGHT
+    _slide_number_field(pp, 12, GREY)
+
+
+def marker(slide, cx, cy, d, n):
+    """이미지와 분리된 번호 마커(별도 도형). cx,cy=중심(in), d=지름(in)."""
+    sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx - d / 2), Inches(cy - d / 2), Inches(d), Inches(d))
+    sp.fill.solid(); sp.fill.fore_color.rgb = MARK_RED
+    sp.line.color.rgb = WHITE; sp.line.width = Pt(1.25)
+    sp.shadow.inherit = False
+    tf = sp.text_frame
+    tf.margin_left = 0; tf.margin_right = 0; tf.margin_top = 0; tf.margin_bottom = 0
+    tf.word_wrap = False
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = str(n)
+    style_run(r, size=9, bold=True, color=WHITE)
 
 
 def desc_box(slide, x, y, w, h, items):
@@ -188,18 +229,18 @@ def cover_slide(prs):
     return s
 
 
-def divider_slide(prs, roman, title, page):
+def divider_slide(prs, roman, title):
     s = blank(prs)
     rect(s, 0, 0, SLIDE_W_IN, SLIDE_H_IN, fill=WHITE)
     rect(s, 0, 2.75, SLIDE_W_IN, 2.0, fill=KB_YELLOW)
     rect(s, 0, 2.75, SLIDE_W_IN, 0.07, fill=KB_YELLOW_DK)
     add_text(s, 0.9, 3.05, 2.2, 1.4, [[(roman, dict(size=54, bold=True, color=WHITE))]], anchor=MSO_ANCHOR.MIDDLE)
     add_text(s, 2.6, 3.05, 9.5, 1.4, [[(title, dict(size=34, bold=True, color=GREY_DK))]], anchor=MSO_ANCHOR.MIDDLE)
-    footer(s, page)
+    footer(s)
     return s
 
 
-def step_slide(prs, n, page, captures_dir, tmp):
+def step_slide(prs, n, captures_dir, tmp):
     title, items = STEPS[n]
     roman, ptitle = STEP_PART[n]
     s = blank(prs)
@@ -217,8 +258,7 @@ def step_slide(prs, n, page, captures_dir, tmp):
     IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
     src = os.path.join(captures_dir, f"step{n:02d}.png") if captures_dir else None
     out_img = os.path.join(tmp, f"step{n:02d}.png")
-    callouts = [{"n": mn, "x": fx, "y": fy} for mn, fx, fy in MARKERS.get(n, [])]
-    iw, ih = build_image(src, callouts, out_img)
+    iw, ih = build_image(src, [], out_img)  # 깨끗한 원본(마커는 별도 도형)
     scale = min(IMGW / (iw / 96.0), IMGH / (ih / 96.0))
     dw, dh = (iw / 96.0) * scale, (ih / 96.0) * scale
     dx, dy = IMGX + (IMGW - dw) / 2, IMGY + (IMGH - dh) / 2
@@ -233,13 +273,17 @@ def step_slide(prs, n, page, captures_dir, tmp):
                   [(f"step{n:02d} 캡처가 들어갈 자리", dict(size=10, color=GREY))]],
                  anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
 
+    # 번호 마커(이미지와 분리된 별도 도형, 작게)
+    for mn, fx, fy in MARKERS.get(n, []):
+        marker(s, dx + fx * dw, dy + fy * dh, 0.23, mn)
+
     # 구분선 + 우측 설명(오른쪽으로 이동)
     rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
     RX, RW = 8.85, 4.3
     add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
     rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
     desc_box(s, RX, 2.05, RW, 4.7, items)
-    footer(s, page)
+    footer(s)
     return s
 
 
@@ -248,12 +292,11 @@ def build(captures_dir, out_path):
     prs.slide_width = Emu(int(SLIDE_W_IN * EMU_PER_IN))
     prs.slide_height = Emu(int(SLIDE_H_IN * EMU_PER_IN))
     cover_slide(prs)
-    page = 2
     with tempfile.TemporaryDirectory() as tmp:
         for roman, ptitle, nums in PARTS:
-            divider_slide(prs, roman, ptitle, page); page += 1
+            divider_slide(prs, roman, ptitle)
             for n in nums:
-                step_slide(prs, n, page, captures_dir, tmp); page += 1
+                step_slide(prs, n, captures_dir, tmp)
         prs.save(out_path)
     n_cap = 0
     if captures_dir and os.path.isdir(captures_dir):
