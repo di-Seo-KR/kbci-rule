@@ -256,13 +256,10 @@ def step_slide(prs, st, section, tmp):
     rect(s, 0, 0, SLIDE_W_IN, SLIDE_H_IN, fill=WHITE)
     n, title = st['n'], (st['title'] or '')
     items = classify_desc(st['desc'])
+    _header(s, n, title, section)
+    # 좌측 이미지 영역(틀 고정) — 이미지 없으면 자리표시자
+    IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
     if st['img']:
-        _header(s, n, title, section)
-        # 설명이 있으면 좌측 이미지 + 우측 설명, 없으면 이미지를 전체 폭으로 확대
-        if items:
-            IMGX, IMGY, IMGW, IMGH = 0.1, 1.45, 8.4, 5.5
-        else:
-            IMGX, IMGY, IMGW, IMGH = 0.5, 1.45, 12.33, 5.55
         ip = os.path.join(tmp, f"s{n}.png")
         open(ip, 'wb').write(st['img'])
         iw, ih = Image.open(ip).size
@@ -275,18 +272,19 @@ def step_slide(prs, st, section, tmp):
             rect(s, dx + bx * dw, dy + by * dh, bw * dw, bh * dh, fill=None, line=HILITE_RED, line_w=2.25)
         for mn, fx, fy in st['markers']:
             marker(s, dx + fx * dw, dy + fy * dh, 0.23, mn)
-        if items:
-            rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
-            RX, RW = 8.85, 4.3
-            add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
-            rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
-            desc_box(s, RX, 2.05, RW, 4.7, items)
     else:
-        # 이미지 없는 단계(절차 안내/캡처 예정): 본문 중앙 배치
-        _header(s, n, title, section)
-        rect(s, 1.2, 2.7, 10.93, 2.1, fill=GREY_LT, line=GREY_BORDER, line_w=1)
-        body = [[(t, dict(size=14, color=GREY_DK))] for t, _ in items] or [[(st['desc'], dict(size=14, color=GREY_DK))]]
-        add_text(s, 1.6, 2.9, 10.13, 1.7, body, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        rect(s, IMGX, IMGY, IMGW, IMGH, fill=GREY_LT, line=GREY_BORDER, line_w=1)
+        add_text(s, IMGX, IMGY + IMGH / 2 - 0.35, IMGW, 0.7,
+                 [[("[ 화면 캡처 영역 ]", dict(size=14, bold=True, color=GREY))],
+                  [("캡처 추가 예정", dict(size=10, color=GREY))]],
+                 anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+    # 우측 '사용 방법' 패널(항상 유지 — 내용은 직접 작성)
+    rect(s, 8.62, 1.5, 0.014, 5.4, fill=GREY_BORDER)
+    RX, RW = 8.85, 4.3
+    add_text(s, RX, 1.5, RW, 0.35, [[("사용 방법", dict(size=13, bold=True, color=KB_YELLOW_DK))]])
+    rect(s, RX, 1.87, 0.55, 0.045, fill=KB_YELLOW)
+    if items:
+        desc_box(s, RX, 2.05, RW, 4.7, items)
     footer(s)
     return s
 
