@@ -113,24 +113,53 @@ hdr=tbl.rows[0].cells
 for c,txt in zip(hdr,["현 행","개 정 (안)","비 고"]):
     shade(c,YELLOW); c.paragraphs[0].alignment=AL.CENTER
     rr=c.paragraphs[0].add_run(txt); kfont(rr,size=10,bold=True,color=GREY)
-def diff_cell(cell,cur,new):
-    cell.text=""
-    p=cell.paragraphs[0]; p.paragraph_format.space_after=Pt(2); p.paragraph_format.line_spacing=1.15
-    if new.lstrip().startswith("〈"):
-        r=p.add_run(new); kfont(r,size=9,bold=True,color=RGBColor(0xC0,0x00,0x00)); return
+BLUE=RGBColor(0x12,0x4A,0xC8); MOK=set('가나다라마바사아자차카타파하')
+def parse_lines(text):
+    sp=[(m.start(),m.end()) for m in re.finditer(r'[\(\[][^\(\)\[\]]*[\)\]]',text)]
+    sp+=[(m.start(),m.end()) for m in re.finditer(r'\d{1,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?',text)]
+    prot=lambda i: any(a<=i<b for a,b in sp)
+    pts={0:0}
+    for m in re.finditer(r'[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]',text):
+        if not prot(m.start()): pts.setdefault(m.start(),1)
+    for m in re.finditer(r'(?<=\s)\d{1,2}\.(?=\s)',text):
+        if not prot(m.start()): pts.setdefault(m.start(),2)
+    for m in re.finditer(r'(?<=\s)[가-하]\.(?=\s)',text):
+        if not prot(m.start()) and text[m.start()] in MOK: pts.setdefault(m.start(),3)
+    pos=sorted(pts); out=[]
+    for k,s in enumerate(pos):
+        e=pos[k+1] if k+1<len(pos) else len(text); out.append((pts[s],s,e))
+    return out
+def changed_mask(cur,new):
+    mask=bytearray(len(new))
     for tag,i1,i2,j1,j2 in difflib.SequenceMatcher(None,cur,new,autojunk=False).get_opcodes():
-        seg=new[j1:j2]
+        if tag in ('replace','insert'):
+            for j in range(j1,j2): mask[j]=1
+    return mask
+def render_lines(cell,text,mask=None):
+    cell.text=""
+    if text.lstrip().startswith("〈"):
+        r=cell.paragraphs[0].add_run(text); kfont(r,size=9,bold=True,color=RGBColor(0xC0,0x00,0x00)); return
+    first=True
+    for lvl,s,e in parse_lines(text):
+        raw=text[s:e]; lead=len(raw)-len(raw.lstrip()); seg=raw.strip()
         if not seg: continue
-        for k,line in enumerate(seg.split("\n")):
-            if k>0: p.add_run("\n")
-            if not line: continue
-            r=p.add_run(line); kfont(r,size=9)
-            if tag in ("replace","insert"): r.font.highlight_color=WD_COLOR_INDEX.YELLOW
+        p=cell.paragraphs[0] if first else cell.add_paragraph(); first=False
+        p.paragraph_format.left_indent=Mm(4*lvl); p.paragraph_format.space_after=Pt(1); p.paragraph_format.line_spacing=1.12
+        if mask is None:
+            r=p.add_run(seg); kfont(r,size=9)
+        else:
+            base=s+lead; j=0
+            while j<len(seg):
+                cm=mask[base+j]; k=j
+                while k<len(seg) and mask[base+k]==cm: k+=1
+                r=p.add_run(seg[j:k]); kfont(r,size=9,color=BLUE if cm else GREY)
+                j=k
+    if first: cell.paragraphs[0].add_run("")
 
 for head,cur,new,note in entries:
     row=tbl.add_row().cells
-    cell_text(row[0],"",cur,9)
-    diff_cell(row[1],cur,new)
+    render_lines(row[0],cur,None)
+    render_lines(row[1],new,changed_mask(cur,new))
     cell_text(row[2],"",note,8)
 for c,w in zip(tbl.columns,widths):
     for cell in c.cells: cell.width=w
