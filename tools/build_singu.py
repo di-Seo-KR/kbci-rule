@@ -2,10 +2,10 @@
 """사규관리규정 종합 개정안 신구조문대비표(.docx) 생성.
 표현 정비(법제처)는 자동 치환, 핵심 조문(목 삭제·효력순위 통합·시스템 현행화·정본 신설 등)은 권장안 직접 반영.
 """
-import re, os
+import re, os, difflib
 from docx import Document
 from docx.shared import Pt, Mm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH as AL
+from docx.enum.text import WD_ALIGN_PARAGRAPH as AL, WD_COLOR_INDEX
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -65,23 +65,19 @@ def revise(s):
 NEW={
  "제4조(규정화시 유의사항)":("제4조(규정화 시 유의사항) 규정화 시에는 계속성·탄력성·균형성·적용성·능률성을 고려하여야 한다.",
    "[경량화] 5개 호의 추상 설명을 1개 문장으로 축약"),
- "제5조(규정의 효력순위)":("제5조(규정의 효력순위) ① 외규는 규정에 우선하여 효력을 가진다. ② 규정은 정관, 이사회규정, 이사회 부의대상 규정, 대표이사 전결규정, 그 밖의 일반규정의 순위로 하위규정을 구속하고, 상위규정에 저촉되는 하위규정의 조항은 효력을 상실한다. ③ 동일 순위의 규정 사이에서 기존 조항이 새로 제정·개정된 조항과 저촉되는 부분은 특별한 정함이 없는 한 새 규정의 시행과 동시에 효력을 잃는다. ④ 지침은 규정에 저촉되지 않는 범위에서 규정과 동일한 효력을 가진다.",
-   "[정합성·경량화] 제10조의2와 중복·불일치 → 제5조로 통합(위계 목록 일원화). ※위계 목록 [확인]"),
  "제8조(등록)":("제8조(등록) 규정의 제정·개정·폐지안이 결재되었을 때에는 주무부서장은 「사규관리시스템」에 등록하며, 제30조의2에 따라 문서번호(구분-연도-순번)를 부여한다. 다만, 감독기관의 협의가 필요한 때에는 그 동의서 사본을 첨부한다.",
    "[시스템·연계] ‘문서관리규정 연계’→사규관리시스템 등록·제30조의2 문서번호 부여로 현행화, 개폐→제정·개정·폐지"),
  "제9조(시달절차)":("제9조(공포 절차) ① 주무부서장은 등록을 마친 사규를, 규정은 대표이사 명의로, 지침은 전결권자 명의로 공포한다. ② 사규를 공포하는 경우에는 제정·개정·폐지의 사유를 간략히 명시하여야 하며, 필요에 따라 다음 사항을 따로 통지할 수 있다. 1. 규정의 해설 2. 규정의 시행에 필요한 조치와 그 밖의 준비사항",
    "[정합성·시스템·표현] 비문(‘규정을 규정은’) 정리, 시달→공포, 등록 필→등록을 마친, 개폐→제정·개정·폐지"),
- "제10조의2(효력순위)":("〈삭제〉",
-   "[경량화·정합성] 제5조와 중복 → 삭제(제5조로 통합)"),
- "제15조(규정집 간행)":("제15조(등재 및 열람) ① 주무부서장은 규정을 「사규관리시스템」에 등재하여 관리하며, 임직원은 사규관리시스템을 통하여 열람한다. ② 현행 규정의 세부사항은 『별표 제1호』의 사규목차에 따른다.",
-   "[시스템·경량화] 전산시스템 등→사규관리시스템, 종이 ‘규정집 간행’ 완화, 조명 현행화"),
+ "제15조(규정집 간행)":("〈삭제〉",
+   "[경량화·시스템] ‘규정집 간행’ 불필요(사규관리시스템 검색·조회로 대체). 열람·정본은 신설 조항으로 흡수. ※별표 제1호 사규목차 참조 정리 [확인]"),
  "제18조(본칙의 구성)":("제18조(본칙의 구성) ① 본칙은 「조」로 구성한다. ② 여러 조문으로 된 규정은 보통 「장」으로 나누며, 소분류가 더 필요할 때에는 절·관의 순으로 사용하고, 특히 조문이 많을 때에는 장의 분류 위에 「편」을 둔다. ③ 편·장·절·관에는 각각 일련번호와 제목을 붙인다. 다만, 장·절·관의 일련번호는 이들이 속하는 편·장·절이 바뀔 때마다 1부터 시작한다.",
    "[정합성] ‘목’은 조 하위 단위 → 조 위 묶음(편·장·절·관)에서 삭제"),
  "제20조(조)":("제20조(조) ① 조에는 제1조부터 시작하는 일련번호를 붙이되 편·장·절·관이 바뀌더라도 그 번호순을 바꾸지 않는다. ② 조에는 조문의 내용을 요약한 조명을 소괄호 안에 표시한다.",
    "[정합성·표현] ‘목’ 삭제, ‘아니한다’→‘않는다’"),
 }
 # 신설(정본)
-EXTRA=[("〈신설〉","제○조(정본) 「사규관리시스템」에 등재된 사규를 정본(正本)으로 하며, 그 내용이 인쇄물 등 다른 사본과 다를 때에는 정본에 따른다.","[시스템·신설] ※정책 [확인]")]
+EXTRA=[("〈신설〉","제○조(정본 및 열람) ① 「사규관리시스템」에 등재된 사규를 정본(正本)으로 하며, 그 내용이 인쇄물 등 다른 사본과 다를 때에는 정본에 따른다. ② 임직원은 사규관리시스템을 통하여 사규를 열람한다.","[시스템·신설] 정본 채택(승인). 제15조 삭제분(열람) 흡수")]
 
 # ---------- 변경 조문 수집 ----------
 entries=[]  # (head, cur, new, note)
@@ -117,11 +113,24 @@ hdr=tbl.rows[0].cells
 for c,txt in zip(hdr,["현 행","개 정 (안)","비 고"]):
     shade(c,YELLOW); c.paragraphs[0].alignment=AL.CENTER
     rr=c.paragraphs[0].add_run(txt); kfont(rr,size=10,bold=True,color=GREY)
+def diff_cell(cell,cur,new):
+    cell.text=""
+    p=cell.paragraphs[0]; p.paragraph_format.space_after=Pt(2); p.paragraph_format.line_spacing=1.15
+    if new.lstrip().startswith("〈"):
+        r=p.add_run(new); kfont(r,size=9,bold=True,color=RGBColor(0xC0,0x00,0x00)); return
+    for tag,i1,i2,j1,j2 in difflib.SequenceMatcher(None,cur,new,autojunk=False).get_opcodes():
+        seg=new[j1:j2]
+        if not seg: continue
+        for k,line in enumerate(seg.split("\n")):
+            if k>0: p.add_run("\n")
+            if not line: continue
+            r=p.add_run(line); kfont(r,size=9)
+            if tag in ("replace","insert"): r.font.highlight_color=WD_COLOR_INDEX.YELLOW
+
 for head,cur,new,note in entries:
     row=tbl.add_row().cells
     cell_text(row[0],"",cur,9)
-    delete = new.startswith("〈삭제〉")
-    cell_text(row[1],"",new,9, head_color=RGBColor(0xC0,0x00,0x00) if (delete or new.startswith("〈신설〉") or head=="〈신설〉") else None)
+    diff_cell(row[1],cur,new)
     cell_text(row[2],"",note,8)
 for c,w in zip(tbl.columns,widths):
     for cell in c.cells: cell.width=w
