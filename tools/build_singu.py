@@ -186,7 +186,7 @@ def parse_lines(text):
     sp+=[(m.start(),m.end()) for m in re.finditer(r'\d{1,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?',text)]
     prot=lambda i: any(a<=i<b for a,b in sp)
     pts={0:0}
-    for m in re.finditer(r'[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]',text):
+    for m in re.finditer(r'[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳](?=\s)',text):
         if not prot(m.start()): pts.setdefault(m.start(),1)
     for m in re.finditer(r'(?<=\s)\d{1,2}\.(?=\s)',text):
         if not prot(m.start()): pts.setdefault(m.start(),2)
