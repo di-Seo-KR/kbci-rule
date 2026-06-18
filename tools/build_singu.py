@@ -196,6 +196,15 @@ def diff_masks(cur,new):
         if tag in ('replace','insert'):
             for j in range(j1,j2): mn[j]=1
     return mc,mn
+def sentence_spans(seg):
+    spans=[]; start=0; i=0; n=len(seg)
+    while i<n:
+        if seg[i]=='다' and i+1<n and seg[i+1]=='.' and (i+2>=n or seg[i+2]==' '):
+            spans.append((start,i+2)); start=i+2; i+=2
+        else:
+            i+=1
+    if start<n: spans.append((start,n))
+    return spans if spans else [(0,n)]
 def render_lines(cell,text,mask=None):
     cell.text=""
     if text.lstrip().startswith("〈"):
@@ -209,12 +218,11 @@ def render_lines(cell,text,mask=None):
         if mask is None:
             r=p.add_run(seg); kfont(r,size=9)
         else:
-            base=s+lead; j=0
-            while j<len(seg):
-                cm=mask[base+j]; k=j
-                while k<len(seg) and mask[base+k]==cm: k+=1
-                r=p.add_run(seg[j:k]); kfont(r,size=9,color=BLUE if cm else GREY)
-                j=k
+            base=s+lead
+            for a,b in sentence_spans(seg):     # 문장 단위: 변경 포함 문장 전체 파랑
+                if b<=a: continue
+                changed=any(mask[base+j] for j in range(a,b))
+                r=p.add_run(seg[a:b]); kfont(r,size=9,color=BLUE if changed else GREY)
     if first: cell.paragraphs[0].add_run("")
 
 for head,cur,new,note in entries:
