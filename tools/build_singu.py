@@ -70,7 +70,7 @@ NEW={
  "제9조(시달절차)":("제9조(공포 절차) ① 주무부서장은 등록을 마친 사규를, 규정은 대표이사 명의로, 지침은 전결권자 명의로 공포한다. ② 사규를 공포하는 경우에는 제정·개정·폐지의 사유를 간략히 명시하여야 하며, 필요에 따라 다음 사항을 따로 통지할 수 있다. 1. 규정의 해설 2. 규정의 시행에 필요한 조치와 그 밖의 준비사항",
    "[정합성·시스템·표현] 비문(‘규정을 규정은’) 정리, 시달→공포, 등록 필→등록을 마친, 개폐→제정·개정·폐지"),
  "제15조(규정집 간행)":("〈삭제〉",
-   "[경량화·시스템] ‘규정집 간행’ 불필요(사규관리시스템 검색·조회로 대체). 열람·정본은 신설 조항으로 흡수. ※별표 제1호 사규목차 참조 정리 [확인]"),
+   "[경량화·시스템] ‘규정집 간행’ 불필요(시스템 검색·조회로 대체). 열람·정본은 신설 조항으로 흡수. 별표 제1호(소관부서)는 제6조②에서 유지(고아 참조 없음)"),
  "제18조(본칙의 구성)":("제18조(본칙의 구성) ① 본칙은 「조」로 구성한다. ② 여러 조문으로 된 규정은 보통 「장」으로 나누며, 소분류가 더 필요할 때에는 절·관의 순으로 사용하고, 특히 조문이 많을 때에는 장의 분류 위에 「편」을 둔다. ③ 편·장·절·관에는 각각 일련번호와 제목을 붙인다. 다만, 장·절·관의 일련번호는 이들이 속하는 편·장·절이 바뀔 때마다 1부터 시작한다.",
    "[정합성] ‘목’은 조 하위 단위 → 조 위 묶음(편·장·절·관)에서 삭제"),
  "제20조(조)":("제20조(조) ① 조에는 제1조부터 시작하는 일련번호를 붙이되 편·장·절·관이 바뀌더라도 그 번호순을 바꾸지 않는다. ② 조에는 조문의 내용을 요약한 조명을 소괄호 안에 표시한다.",
@@ -104,7 +104,7 @@ st=doc.styles['Normal']; st.font.name=FONT; st.font.size=Pt(9); st.element.rPr.r
 
 p=doc.add_paragraph(); p.alignment=AL.CENTER
 r=p.add_run("사규관리규정 신·구조문대비표 (종합 개정안)"); kfont(r,size=15,bold=True)
-p2=doc.add_paragraph(); r=p2.add_run("※ [표현]법제처 표현정비 · [정합성]논리·일관성 · [경량화]현대화 · [시스템]사규관리시스템 반영 · [확인]정책 결정 필요")
+p2=doc.add_paragraph(); r=p2.add_run("※ [표현]법제처 표현정비 · [정합성]논리·일관성 · [경량화]현대화 · [시스템]사규관리시스템 반영 ｜ 변경·삭제 글자는 양쪽 칼럼에 파란색 표시")
 kfont(r,size=8,color=RGBColor(0x88,0x88,0x88)); p2.paragraph_format.space_after=Pt(6)
 
 tbl=doc.add_table(rows=1,cols=3); tbl.style='Table Grid'; tbl.alignment=WD_TABLE_ALIGNMENT.CENTER
@@ -129,12 +129,14 @@ def parse_lines(text):
     for k,s in enumerate(pos):
         e=pos[k+1] if k+1<len(pos) else len(text); out.append((pts[s],s,e))
     return out
-def changed_mask(cur,new):
-    mask=bytearray(len(new))
+def diff_masks(cur,new):
+    mc=bytearray(len(cur)); mn=bytearray(len(new))
     for tag,i1,i2,j1,j2 in difflib.SequenceMatcher(None,cur,new,autojunk=False).get_opcodes():
+        if tag in ('replace','delete'):
+            for i in range(i1,i2): mc[i]=1
         if tag in ('replace','insert'):
-            for j in range(j1,j2): mask[j]=1
-    return mask
+            for j in range(j1,j2): mn[j]=1
+    return mc,mn
 def render_lines(cell,text,mask=None):
     cell.text=""
     if text.lstrip().startswith("〈"):
@@ -158,9 +160,16 @@ def render_lines(cell,text,mask=None):
 
 for head,cur,new,note in entries:
     row=tbl.add_row().cells
-    render_lines(row[0],cur,None)
-    m=bytearray(b'\x01'*len(new)) if cur.lstrip().startswith("〈") else changed_mask(cur,new)
-    render_lines(row[1],new,m)
+    if cur.lstrip().startswith("〈"):        # 신설: 현행=마커, 개정안 전체 파랑
+        render_lines(row[0],cur,None)
+        render_lines(row[1],new,bytearray(b'\x01'*len(new)))
+    elif new.lstrip().startswith("〈"):      # 삭제: 현행 전체 파랑, 개정안=마커
+        render_lines(row[0],cur,bytearray(b'\x01'*len(cur)))
+        render_lines(row[1],new,None)
+    else:                                    # 변경: 양쪽 변경부분 파랑
+        mc,mn=diff_masks(cur,new)
+        render_lines(row[0],cur,mc)
+        render_lines(row[1],new,mn)
     cell_text(row[2],"",note,8)
 for c,w in zip(tbl.columns,widths):
     for cell in c.cells: cell.width=w
