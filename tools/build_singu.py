@@ -159,7 +159,8 @@ def render_lines(cell,text,mask=None):
 for head,cur,new,note in entries:
     row=tbl.add_row().cells
     render_lines(row[0],cur,None)
-    render_lines(row[1],new,changed_mask(cur,new))
+    m=bytearray(b'\x01'*len(new)) if cur.lstrip().startswith("〈") else changed_mask(cur,new)
+    render_lines(row[1],new,m)
     cell_text(row[2],"",note,8)
 for c,w in zip(tbl.columns,widths):
     for cell in c.cells: cell.width=w
