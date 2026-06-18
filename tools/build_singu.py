@@ -163,7 +163,7 @@ st=doc.styles['Normal']; st.font.name=FONT; st.font.size=Pt(9); st.element.rPr.r
 
 p=doc.add_paragraph(); p.alignment=AL.CENTER
 r=p.add_run("사규관리규정 신·구조문대비표 (종합 개정안)"); kfont(r,size=15,bold=True)
-p2=doc.add_paragraph(); r=p2.add_run("※ [표현]법제처 표현정비 · [정합성]논리·일관성 · [경량화·현대화] · [시스템]사규관리시스템 · [삭제]모호·중복·범위밖 정리 ｜ 변경·삭제 글자는 양쪽 칼럼에 파란색")
+p2=doc.add_paragraph(); r=p2.add_run("※ [표현]법제처 표현정비 · [정합성]논리·일관성 · [경량화·현대화] · [시스템]사규관리시스템 · [삭제]모호·중복·범위밖 정리 ｜ 변경·삭제된 문장(항·호)은 양쪽 칼럼에 파란색 강조")
 kfont(r,size=8,color=RGBColor(0x88,0x88,0x88)); p2.paragraph_format.space_after=Pt(6)
 
 tbl=doc.add_table(rows=1,cols=3); tbl.style='Table Grid'; tbl.alignment=WD_TABLE_ALIGNMENT.CENTER
