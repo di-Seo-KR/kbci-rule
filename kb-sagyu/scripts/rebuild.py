@@ -31,25 +31,38 @@ CAT = {1: '정관·이사회', 2: '조직·윤리', 3: '협의회·위원회', 4
        8: 'IT·정보보호', 9: '본업(신용정보)', 10: '홍보·사회공헌', 11: '감사·내부통제'}
 
 ART  = re.compile(r'제\s*(\d+)\s*조\s*[（(]')
+DEPT = re.compile(r'소관\s*부서\s*[:：]\s*([^)）\n]+)')
 norm = lambda s: re.sub(r'[\s·ㆍ・「」『』"\'()（）]', '', s)
 
 
 def extract(path):
+    """본문 텍스트와 머릿글의 소관부서를 함께 추출한다.
+    소관부서는 원문 머릿글 "사규명(소관부서: ○○부)"이 정본이다 — 본문 역할 조문으로 추정하지 말 것."""
     import docx
     d = docx.Document(path)
     parts = [p.text for p in d.paragraphs]
     for t in d.tables:
         for row in t.rows:
             parts.append('\t'.join(c.text for c in row.cells))
-    return '\n'.join(parts)
+    head = []
+    for sec in d.sections:
+        for h in (sec.header, sec.footer):
+            head += [p.text for p in h.paragraphs]
+            for t in h.tables:
+                for row in t.rows:
+                    head += [c.text for c in row.cells]
+    m = DEPT.search(' '.join(head))
+    return '\n'.join(parts), (m.group(1).strip() if m else '')
 
 
 def main():
     files = sorted(f for f in os.listdir(SRC) if f.endswith('.docx') and not f.startswith('~'))
-    corpus, fail = [], []
+    corpus, fail, dept = [], [], {}
     for f in files:
         try:
-            corpus.append({'file': f, 'text': extract(os.path.join(SRC, f))})
+            text, dp = extract(os.path.join(SRC, f))
+            corpus.append({'file': f, 'text': text})
+            dept[f] = dp
         except Exception as e:
             fail.append((f, str(e)[:60]))
     if fail:
@@ -101,7 +114,7 @@ def main():
     now = datetime.date.today()
     with open(os.path.join(DATA, '사규목록.csv'), 'w', newline='', encoding='utf-8-sig') as fp:
         w = csv.writer(fp)
-        w.writerow(['분류번호', '분류', '사규명', '시행일', '경과연수', '조문수', '부칙수',
+        w.writerow(['분류번호', '분류', '사규명', '소관부서', '시행일', '경과연수', '조문수', '부칙수',
                     '장편제', '제1조목적', '보칙장', '다른사규와의관계', '부칙일자전부', '인용수', '피인용수', '이사회결의대상'])
         for c in sorted(corpus, key=lambda x: tuple(int(v) for v in code(x['file']).split('-'))):
             f = c['file']; t = c['text']; cd = code(f)
@@ -110,7 +123,7 @@ def main():
                   if m else None)
             nb = len(re.findall(r'부\s*칙', t))
             nd = len(re.findall(r'부\s*칙\s*[（(]\s*\d{4}', t))
-            w.writerow([cd, CAT[int(cd.split('-')[0])], name(f), dt,
+            w.writerow([cd, CAT[int(cd.split('-')[0])], name(f), dept.get(f, ''), dt,
                         round((now - dt).days / 365.25, 1) if dt else '',
                         len(set(ART.findall(t))), nb,
                         'Y' if re.search(r'제\s*1\s*장', t) else 'N',
