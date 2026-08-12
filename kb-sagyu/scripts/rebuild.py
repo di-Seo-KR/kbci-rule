@@ -31,6 +31,8 @@ CAT = {1: '정관·이사회', 2: '조직·윤리', 3: '협의회·위원회', 4
        8: 'IT·정보보호', 9: '본업(신용정보)', 10: '홍보·사회공헌', 11: '감사·내부통제'}
 
 ART  = re.compile(r'제\s*(\d+)\s*조\s*[（(]')
+# 머릿글에 소관부서 표기가 없는 사규의 보정값 (근거: (11-2) 별표 제1호 규정별 소관부서)
+DEPT_FALLBACK = {'8-9': 'IT운영부 정보보호팀'}
 DEPT = re.compile(r'소관\s*부서\s*[:：]\s*([^)）\n]+)')
 norm = lambda s: re.sub(r'[\s·ㆍ・「」『』"\'()（）]', '', s)
 
@@ -123,7 +125,7 @@ def main():
                   if m else None)
             nb = len(re.findall(r'부\s*칙', t))
             nd = len(re.findall(r'부\s*칙\s*[（(]\s*\d{4}', t))
-            w.writerow([cd, CAT[int(cd.split('-')[0])], name(f), dept.get(f, ''), dt,
+            w.writerow([cd, CAT[int(cd.split('-')[0])], name(f), dept.get(f, '') or DEPT_FALLBACK.get(cd, ''), dt,
                         round((now - dt).days / 365.25, 1) if dt else '',
                         len(set(ART.findall(t))), nb,
                         'Y' if re.search(r'제\s*1\s*장', t) else 'N',
@@ -133,6 +135,37 @@ def main():
                         'Y' if re.search(r'제\s*\d+\s*조\s*[（(][^)）]*다른\s*사규', t) else 'N',
                         'Y' if nb and nd == nb else ('일부' if nd else 'N'),
                         outdeg.get(cd, 0), indeg.get(cd, 0), 'Y' if cd in BOARD else ''])
+
+    # ── 별표·서식 첨부 코퍼스 (attachments/ → corpus_attachments.json)
+    ATT = os.path.join(BASE, 'attachments')
+    if os.path.isdir(ATT):
+        att = []
+        for f in sorted(os.listdir(ATT)):
+            if f.startswith('~$'):
+                continue
+            path = os.path.join(ATT, f)
+            try:
+                if f.endswith('.docx'):
+                    text, _ = extract(path)
+                elif f.endswith('.xlsx'):
+                    from openpyxl import load_workbook
+                    wb = load_workbook(path, data_only=True)
+                    parts = []
+                    for ws in wb.worksheets:
+                        parts.append('[시트] ' + ws.title)
+                        for row in ws.iter_rows(values_only=True):
+                            vals = [str(v) for v in row if v is not None]
+                            if vals:
+                                parts.append('\t'.join(vals))
+                    text = '\n'.join(parts)
+                else:
+                    continue
+                att.append({'file': f, 'text': text})
+            except Exception as e:
+                print('  !! 첨부 추출 실패:', f, '-', str(e)[:50])
+        json.dump({'attachments': att},
+                  open(os.path.join(DATA, 'corpus_attachments.json'), 'w'), ensure_ascii=False)
+        print('첨부(별표·서식) %d건 -> corpus_attachments.json' % len(att))
 
     total_edges = sum(len(v) for v in edges.values())
     print('완료: 사규 %d건 / 인용관계 %d개 / 실패 %d건' % (len(corpus), total_edges, len(fail)))
