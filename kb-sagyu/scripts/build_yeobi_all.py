@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""여비규정 전부개정안 v2 — 심사본·전조문 신구대비표·사규서식본 3종 일괄 생성.
+"""여비규정 전부개정안 v3 — 심사본·전조문 신구대비표·사규서식본 3종 일괄 생성.
 실행: 저장소 루트에서 python3 kb-sagyu/scripts/build_yeobi_all.py
 조문 데이터는 yeobi_data.py 단일 원천."""
 import os, re, sys, json, shutil, difflib
@@ -74,7 +74,7 @@ def build_review():
                 para(s, indent=(0, 4, 8)[lvl], after=2)
 
     para("여비규정 전부개정안", size=17, bold=True, align=AL.CENTER, after=1)
-    para("(v2 — 출장 기준·절차 보강안)", size=11, align=AL.CENTER, color=MUT, after=2)
+    para("(v3 — 출장 기준·절차 보강안)", size=11, align=AL.CENTER, color=MUT, after=2)
     para("(입안 검토용 초안 — 시행일 및 문서번호는 결재 시 확정)", size=9, align=AL.CENTER, color=MUT, after=1)
     para("[시행 2026. ○. ○.] [2026. ○. ○. 전부개정-2026-0○○]", size=10, align=AL.CENTER, after=1)
     para("※ 문서번호는 「사규관리규정」 제16조제1항에 따라 사규관리시스템 채번 후 기재", size=8.5, align=AL.CENTER, color=MUT, after=8)
@@ -138,7 +138,7 @@ def build_review():
     for i, n in enumerate(D.REVIEW_NOTES, 1):
         para(f"{i}. {n}", size=9.5, indent=2, after=3)
 
-    out = os.path.join(BASE, "drafts/여비규정_전부개정안_v2.docx")
+    out = os.path.join(BASE, "drafts/여비규정_전부개정안_v3.docx")
     doc.save(out); print("생성:", out)
 
 
@@ -269,14 +269,14 @@ def build_daebi():
     render(row.cells[1], bt, bytearray(b"\x01" * len(bt)))
     note_cell(row.cells[2], "전부개정으로 종전 본칙·부칙 실효(「사규관리규정」 제21조제3항). 부칙을 항 방식→조 방식으로 정비(제17조), 경과조치 신설")
 
-    out = os.path.join(BASE, "drafts/여비규정_신구조문대비표_v2.docx")
+    out = os.path.join(BASE, "drafts/여비규정_신구조문대비표_v3.docx")
     doc.save(out); print("생성:", out, "| 행:", len(tbl.rows) - 1)
 
 
 # ══════════════════ ③ 사규 서식 적용본 ══════════════════
 def build_template():
     SRC = os.path.join(BASE, "sources/(6-8)_여비규정_250305.docx")
-    OUT = os.path.join(BASE, "drafts/여비규정_전부개정안_v2_사규서식.docx")
+    OUT = os.path.join(BASE, "drafts/여비규정_전부개정안_v3_사규서식.docx")
     shutil.copy(SRC, OUT)
     doc = docx.Document(OUT)
     body = doc.element.body
