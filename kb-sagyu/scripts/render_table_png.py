@@ -76,7 +76,9 @@ def cell_html(lines):
 
 def render(tbl, png, total_px=None):
     grid = tbl['grid']; ncol = len(grid)
-    total_px = total_px or min(1100, max(600, 150 * ncol))
+    if total_px is None:   # 가장 긴 줄이 한 줄에 들어가도록 폭 결정(한글 1자 ≈ 글꼴크기 22px)
+        longest = max((len(l['text'].strip()) for row in tbl['rows'] for c in row for l in c['lines']), default=0)
+        total_px = min(1100, max(600, 150 * ncol, 24 * longest + 220))
     s = sum(grid); widths = [round(total_px * g / s) for g in grid]
     # vMerge: 세로 병합 rowspan 계산
     rows = tbl['rows']; rowspan = {}
