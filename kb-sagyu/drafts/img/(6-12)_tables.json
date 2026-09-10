@@ -1,0 +1,234 @@
+[
+ {
+  "grid": [
+   1980,
+   1139,
+   1140,
+   1140,
+   1140,
+   1140,
+   1140
+  ],
+  "rows": [
+   [
+    [
+     {
+      "text": "입사후 경과 기간",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "5년",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "10년",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "15년",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "20년",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "25년",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "30년",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ],
+   [
+    [
+     {
+      "text": "부여일수",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "2일",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "3일",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "4일",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "5일",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "6일",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "7일",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ],
+   [
+    [
+     {
+      "text": "축하금",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "10만원",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "15만원",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "20만원",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "25만원",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "30만원",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "35만원",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ]
+  ]
+ },
+ {
+  "grid": [
+   6761,
+   2028
+  ],
+  "rows": [
+   [
+    [
+     {
+      "text": "구          분",
+      "jc": "center",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "조치기준",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ],
+   [
+    [
+     {
+      "text": "1. 무단결근일수가 3일 이내인 경우",
+      "jc": "both",
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "주의환기",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ],
+   [
+    [
+     {
+      "text": "1. 무단결근일수가 4일 이상인 경우",
+      "jc": null,
+      "bold": false
+     },
+     {
+      "text": "2. 무단결근일수가 4일 미만일지라도 결근사유, 평소",
+      "jc": null,
+      "bold": false
+     },
+     {
+      "text": "   근무태도 등을 감안하여 문책이 요구되는 경우",
+      "jc": null,
+      "bold": false
+     }
+    ],
+    [
+     {
+      "text": "징계 부의",
+      "jc": "center",
+      "bold": false
+     }
+    ]
+   ]
+  ]
+ }
+]
