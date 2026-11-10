@@ -3,7 +3,7 @@
 
 입력: kb-sagyu/data(코퍼스·목록·인용관계·대장), attachments(직무전결기준표 xlsx), drafts(예산과목표·계정과목 MD),
       kb-sagyu/skill_src/(SKILL.md, sagyu.py — 사람이 고치는 원본)
-출력: kb-sagyu/skill/kb-sagyu/ (스킬 폴더), kb-sagyu/skill/kb-sagyu.zip (업로드용)
+출력: .claude/skills/kb-sagyu/ (저장소 프로젝트 스킬), kb-sagyu/skill/kb-sagyu.zip (claude.ai 업로드용)
 
 사규가 개정되면: rebuild.py → build_budget_accounts_md.py·build_account_chart_md.py → 이 스크립트 순으로 실행.
 """
@@ -13,7 +13,7 @@ import openpyxl
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / 'skill_src'
-OUT = ROOT / 'skill' / 'kb-sagyu'
+OUT = ROOT.parent / '.claude' / 'skills' / 'kb-sagyu'   # 저장소 프로젝트 스킬: 이 저장소의 Claude Code 세션에서 자동 인식
 ZIP = ROOT / 'skill' / 'kb-sagyu.zip'
 
 ART = re.compile(r'^제\s*(\d+)\s*조(?:\s*의\s*(\d+))?\s*[\(（]')
@@ -91,6 +91,7 @@ def build_jeongyeol():
 def main():
     if OUT.exists():
         shutil.rmtree(OUT)
+    ZIP.parent.mkdir(parents=True, exist_ok=True)
     (OUT / 'data' / 'regs').mkdir(parents=True)
     (OUT / 'data' / 'atts').mkdir(parents=True)
     (OUT / 'scripts').mkdir()
