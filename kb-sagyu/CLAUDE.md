@@ -15,6 +15,7 @@
 | `references/01~06` | 분석서: 체계기준 / 통폐합 / 거버넌스 저촉 / 상호영향 / 대장 / 외부챗봇 검증 |
 | `drafts/` | 완성된 개정안 산출물 (여비규정 전부개정안이 표준 사례) |
 | `scripts/rebuild.py` | 사규 개정 시 data/ 재생성 (`python scripts/rebuild.py`) |
+| `skill_src/` → `skill/kb-sagyu.zip` | claude.ai 업로드용 **kb-sagyu 스킬**. 원본은 `skill_src/`(SKILL.md·sagyu.py·개정작성.md), `python scripts/build_skill.py`로 데이터와 묶어 zip 생성. 사규 개정 시 rebuild.py 다음에 실행 |
 
 ## 답변 3원칙
 
