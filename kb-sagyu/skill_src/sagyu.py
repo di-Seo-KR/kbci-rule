@@ -8,6 +8,8 @@
   python3 sagyu.py toc 사규                      조 제목 목록 + 그 사규의 별표·서식 목록
   python3 sagyu.py att 키워드 [키워드2 …]         별표·서식 찾기. 1건이면 전문 출력, 여러 건이면 목록
   python3 sagyu.py jg 키워드 [키워드2 …]          직무전결기준표에서 업무 찾기(전결권자·비고). 키워드 없이 --notes 는 적용사항
+  python3 sagyu.py map 키워드 [키워드2 …]         정독 카드에서 관련 사규 찾기(주제·성격으로 탐색, 하나라도 포함) — 질문을 받으면 가장 먼저
+  python3 sagyu.py card 사규                     그 사규의 정독 요약 카드(핵심 규칙·예외·다른 사규와의 연결·정비 포인트)
   python3 sagyu.py exc 키워드 [키워드2 …]         예외·생략·위임·준용 조항만 검색(불구하고/생략/갈음/준용/위임/적용하지 아니)
   python3 sagyu.py where 키워드 [키워드2 …]       키워드가 나오는 모든 조를 한 줄씩(건수 제한 없음)
   python3 sagyu.py cite 사규                     이 사규를 인용하는 사규 / 이 사규가 인용하는 사규
@@ -129,7 +131,7 @@ def name_hits(kw):
 def print_name_hits(kw, shown):
     for r in name_hits(kw):
         blocks, _ = article_blocks(r)
-        print(f"★ 「{r['name']}」({r['key']})은 사규명이 키워드와 일치 — 본문이 약칭을 쓰므로 검색에 안 걸린 조가 있다. 답하기 전에 전문을 읽을 것: show {r['key']}")
+        print(f"★ 「{r['name']}」({r['key']})은 사규명이 키워드와 일치 — 본문이 약칭을 쓰므로 검색에 안 걸린 조가 있다. 답하기 전에 카드와 전문을 읽을 것: card {r['key']} / show {r['key']}")
         print('   조 목록: ' + ', '.join(f"제{no}조({t})" for no, t, _ in blocks))
         for no, t, lines in blocks:
             ex = exc_lines(lines)
@@ -261,6 +263,46 @@ def cmd_where(args):
         if match(a['name'] + text, kw, o['or']): print(f"   □ 별표·서식 ({a['key']}) {a['name']}")
 
 
+CARDS = Path(__file__).resolve().parents[1] / 'references' / 'cards'
+
+
+def card_path(r):
+    return CARDS / (r['file'][:-4] + '.md')
+
+
+def cmd_card(args):
+    r = resolve(args[0]); f = card_path(r)
+    if not f.exists(): print('카드 없음 — show 로 원문을 읽을 것'); return
+    print(f.read_text(encoding='utf-8'))
+    print('\n※ 카드는 지도다. 답의 근거로 쓰는 조문은 show 로 원문을 다시 확인하고 인용할 것.')
+
+
+def cmd_map(args):
+    o, kw = opts(args)
+    if not kw: sys.exit('키워드를 주세요')
+    ks = [sq(k) for k in kw]; res = []
+    for r in INDEX['regs']:
+        f = card_path(r)
+        if not f.exists(): continue
+        sec = ''; hits = []; found = set()
+        for ln in f.read_text(encoding='utf-8').split('\n'):
+            if ln.startswith('## '): sec = ln[3:5].strip('. '); continue
+            hk = [k for k in ks if k in sq(ln)]
+            if hk:
+                found |= set(hk); hits.append((sec, ln.strip()))
+        nm = [k for k in ks if k in sq(r['name'])]
+        found |= set(nm)
+        if found: res.append((len(found), len(hits), r, hits))
+    res.sort(key=lambda x: (-x[0], -x[1]))
+    if not res: print('관련 카드 없음 — 유의어로 다시 검색'); return
+    print(f'키워드 {len(ks)}개 중 일치 개수 순. [2]=예외·생략 [3]=다른 사규와의 연결 [5]=찾는 말. 상위 사규는 card 로 읽고, 근거 조문은 show 로 원문 확인.\n')
+    for nf, nh, r, hits in res[:o['max'] if o['max'] != 30 else 15]:
+        print(f"■ ({r['key']}) 「{r['name']}」 — 일치 {nf}/{len(ks)}, {nh}줄  [소관 {r['소관부서']}]")
+        pri = sorted(hits, key=lambda h: {'2': 0, '3': 1, '5': 2, '1': 3}.get(h[0], 4))
+        for sec, ln in pri[:5]: print(f'   [{sec}] {ln[:230]}')
+        print()
+
+
 def cmd_cite(args):
     r = resolve(args[0])
     rows = list(csv.DictReader(open(DATA / '인용관계.csv', encoding='utf-8-sig')))
@@ -281,7 +323,7 @@ def cmd_ledger(args):
 
 
 CMDS = {'list': cmd_list, 'find': cmd_find, 'show': cmd_show, 'toc': cmd_toc, 'att': cmd_att,
-        'jg': cmd_jg, 'cite': cmd_cite, 'ledger': cmd_ledger, 'exc': cmd_exc, 'where': cmd_where}
+        'jg': cmd_jg, 'cite': cmd_cite, 'ledger': cmd_ledger, 'exc': cmd_exc, 'where': cmd_where, 'card': cmd_card, 'map': cmd_map}
 
 if __name__ == '__main__':
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:

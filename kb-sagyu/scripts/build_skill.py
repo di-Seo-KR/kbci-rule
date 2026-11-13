@@ -129,8 +129,28 @@ def main():
         shutil.copy(ROOT / 'drafts' / f, OUT / 'references' / f)
     for f in sorted((ROOT / 'references').glob('0*.md')):
         shutil.copy(f, OUT / 'references' / f.name)
+    # 정독 요약 카드 + 정비 포인트 종합
+    (OUT / 'references' / 'cards').mkdir()
+    agg = ['# 사규 정비 포인트 종합 (정독 카드 6절 모음)', '',
+           '사규 92건을 정독하며 발견한 인용 조번호 오류·조문 간 모순·낡은 조직명·미정의 용어다. 각 항목은 카드 작성 시점의 원문 기준이며, 개정안 작업 전에 원문으로 다시 확인한다.', '']
+    n_pts = 0
+    for r in index['regs']:
+        cf = SRC / 'cards' / (r['file'][:-4] + '.md')
+        r['card'] = cf.exists()
+        if not cf.exists():
+            continue
+        t = cf.read_text(encoding='utf-8')
+        (OUT / 'references' / 'cards' / cf.name).write_text(t, encoding='utf-8')
+        m = re.search(r'## 6\.[^\n]*\n([\s\S]*)', t)
+        body = m.group(1).strip() if m else ''
+        if body and body != '없음':
+            agg += [f"## ({r['key']}) {r['name']} — 소관 {r['소관부서']}", body, '']
+            n_pts += len(re.findall(r'^- ', body, re.M))
+    agg[2] += f' 총 {n_pts}개 항목.'
+    (OUT / 'references' / '정비포인트_종합.md').write_text('\n'.join(agg), encoding='utf-8')
+    json.dump(index, open(OUT / 'data' / 'index.json', 'w', encoding='utf-8'), ensure_ascii=False)
     shutil.copy(SRC / 'sagyu.py', OUT / 'scripts' / 'sagyu.py')
-    for f in SRC.glob('*.md'):
+    for f in sorted(SRC.glob('*.md')):
         dst = OUT / f.name if f.name == 'SKILL.md' else OUT / 'references' / f.name
         s = f.read_text(encoding='utf-8').replace('{{BUILT}}', index['built']) \
              .replace('{{N_REGS}}', str(len(index['regs']))).replace('{{N_ATTS}}', str(len(index['atts'])))
