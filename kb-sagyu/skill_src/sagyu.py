@@ -8,6 +8,8 @@
   python3 sagyu.py toc 사규                      조 제목 목록 + 그 사규의 별표·서식 목록
   python3 sagyu.py att 키워드 [키워드2 …]         별표·서식 찾기. 1건이면 전문 출력, 여러 건이면 목록
   python3 sagyu.py jg 키워드 [키워드2 …]          직무전결기준표에서 업무 찾기(전결권자·비고). 키워드 없이 --notes 는 적용사항
+  python3 sagyu.py exc 키워드 [키워드2 …]         예외·생략·위임·준용 조항만 검색(불구하고/생략/갈음/준용/위임/적용하지 아니)
+  python3 sagyu.py where 키워드 [키워드2 …]       키워드가 나오는 모든 조를 한 줄씩(건수 제한 없음)
   python3 sagyu.py cite 사규                     이 사규를 인용하는 사규 / 이 사규가 인용하는 사규
   python3 sagyu.py ledger [키워드]               대장 목록(근거 조문·서식)
 
@@ -99,11 +101,50 @@ def snippet(lines, kw, width=3):
     return out
 
 
+EXC = re.compile(r'불구하고|생략할 수|생략한다|갈음|준용|위임|적용하지 아니|그러하지 아니|제외한다|우선한다|예외로')
+
+
+def exc_lines(lines):
+    """조문 안에서 예외·생략·위임·준용을 정한 줄만."""
+    out, i = [], 0
+    while i < len(lines):
+        l = lines[i].strip()
+        if EXC.search(l):
+            out.append(l)
+            if re.search(r'다음\s*각\s*호|다음과 같|다음의', l):      # 뒤따르는 호·목까지 함께
+                j = i + 1
+                while j < len(lines) and re.match(r'^\s*(\d+\.|[가-하]\.|\(\d+\))', lines[j]):
+                    if lines[j].strip() not in out: out.append('  ' + lines[j].strip())
+                    j += 1
+        i += 1
+    return out
+
+
+def name_hits(kw):
+    """키워드가 사규 '이름'에 들어 있는 사규 — 본문은 약칭(협의회·위원회 등)을 써서 키워드 검색에 안 걸린다."""
+    ks = [sq(k) for k in kw]
+    return [r for r in INDEX['regs'] if any(k in sq(r['name']) for k in ks)]
+
+
+def print_name_hits(kw, shown):
+    for r in name_hits(kw):
+        blocks, _ = article_blocks(r)
+        print(f"★ 「{r['name']}」({r['key']})은 사규명이 키워드와 일치 — 본문이 약칭을 쓰므로 검색에 안 걸린 조가 있다. 답하기 전에 전문을 읽을 것: show {r['key']}")
+        print('   조 목록: ' + ', '.join(f"제{no}조({t})" for no, t, _ in blocks))
+        for no, t, lines in blocks:
+            ex = exc_lines(lines)
+            if ex:
+                print(f"   ⚠ 제{no}조({t}) 예외·생략·위임 조항:")
+                for l in ex[:12]: print('      ' + l[:220])
+        print()
+
+
 def cmd_find(args):
     o, kw = opts(args)
     if not kw: sys.exit('키워드를 주세요')
     regs = [resolve(o['reg'])] if o['reg'] else INDEX['regs']
     n = 0
+    if not o['reg']: print_name_hits(kw, None)
     for r in regs:
         blocks, buchik = article_blocks(r)
         for no, title, lines in blocks:
@@ -187,6 +228,39 @@ def cmd_jg(args):
         print('해당 행 없음 → 적용사항 1: 기준표에 명시되지 않은 사항은 대표이사 결재 사항. (다른 규정·시행문서에 별도 정함이 있는지 find 로 확인)')
 
 
+def cmd_exc(args):
+    o, kw = opts(args)
+    if not kw: sys.exit('키워드를 주세요')
+    regs = [resolve(o['reg'])] if o['reg'] else INDEX['regs']
+    n = 0
+    for r in regs:
+        blocks, _ = article_blocks(r)
+        for no, title, lines in blocks:
+            ex = exc_lines(lines)
+            if not ex: continue
+            # 조 전체가 키워드와 관련되거나(사규명 포함) 예외 줄 자체에 키워드가 있는 경우
+            scope = r['name'] + '\n'.join(lines)
+            if match(scope, kw, o['or']):
+                n += 1
+                print(f"⚠ 「{r['name']}」 제{no}조({title})  [({r['key']})]")
+                for l in ex[:14]: print('   ' + l[:240])
+                print()
+    if n == 0: print('해당 예외·생략·위임 조항 없음 (키워드를 줄이거나 --or)')
+
+
+def cmd_where(args):
+    o, kw = opts(args)
+    if not kw: sys.exit('키워드를 주세요')
+    for r in INDEX['regs']:
+        blocks, _ = article_blocks(r)
+        hit = [f"제{no}조({t})" for no, t, lines in blocks if match('\n'.join(lines), kw, o['or'])]
+        tag = ' ★사규명 일치(전문 확인)' if any(sq(k) in sq(r['name']) for k in kw) else ''
+        if hit or tag: print(f"({r['key']}) 「{r['name']}」{tag}: " + (', '.join(hit) or '—'))
+    for a in INDEX['atts']:
+        text = (DATA / 'atts' / a['file']).read_text(encoding='utf-8')
+        if match(a['name'] + text, kw, o['or']): print(f"   □ 별표·서식 ({a['key']}) {a['name']}")
+
+
 def cmd_cite(args):
     r = resolve(args[0])
     rows = list(csv.DictReader(open(DATA / '인용관계.csv', encoding='utf-8-sig')))
@@ -207,7 +281,7 @@ def cmd_ledger(args):
 
 
 CMDS = {'list': cmd_list, 'find': cmd_find, 'show': cmd_show, 'toc': cmd_toc, 'att': cmd_att,
-        'jg': cmd_jg, 'cite': cmd_cite, 'ledger': cmd_ledger}
+        'jg': cmd_jg, 'cite': cmd_cite, 'ledger': cmd_ledger, 'exc': cmd_exc, 'where': cmd_where}
 
 if __name__ == '__main__':
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
